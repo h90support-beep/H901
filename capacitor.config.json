@@ -1,7 +1,7 @@
 {
   "appId": "com.h90.app",
   "appName": "H90",
-  "webDir": ".",
+  "webDir": "www",
   "bundledWebRuntime": false,
   "android": {
     "allowMixedContent": true,
@@ -12,28 +12,21 @@
   "server": {
     "androidScheme": "https",
     "cleartext": true,
-    "allowNavigation": [
-      "*"
-    ]
+    "allowNavigation": ["*"]
   },
   "plugins": {
     "SplashScreen": {
       "launchShowDuration": 2000,
       "launchAutoHide": true,
       "backgroundColor": "#0a0a0f",
-      "androidSplashResourceName": "splash",
-      "androidScaleType": "CENTER_CROP",
-      "showSpinner": false,
-      "splashFullScreen": true,
-      "splashImmersive": true
+      "showSpinner": false
     },
     "StatusBar": {
       "style": "DARK",
-      "backgroundColor": "#0a0a0f",
-      "overlaysWebView": true
+      "backgroundColor": "#0a0a0f"
     },
     "AppLauncher": {
       "enabled": true
     }
   }
-}{}
+}
