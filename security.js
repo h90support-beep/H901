@@ -1,11 +1,11 @@
 /* ================================================================
-   H90 — Security Module (security.js) v2.0
-   ✅ 19 طبقة حماية
+   H90 — Security Module (security.js) v3.0
+   ✅ 19+ طبقة حماية
    ✅ التحقق من التوقيع (SHA1 + SHA256)
    ✅ تشفير USER/PASS (Split + Base64 + Hex)
    ✅ كشف تطبيقات مراقبة الشبكة
    ✅ كشف Root
-   ✅ كشف VPN/Proxy
+   ✅ كشف VPN النشط (اسمح بالمثبّت، امنع الشغّال)
    ✅ كشف MITM
    ✅ Anti-Debug + Anti-Tamper
    ================================================================ */
@@ -19,8 +19,8 @@
   var _H90_SIG = {
     sha1:      '4140C8319C3B0ED361245373EBD33BA106081B5A',
     sha256:    '5ED5B3494642FA161605D623D71706798122CF038BEE104F1762D31306DC5EBB',
-    pkg:       'com.h90.player',
-    appName:   'H90 Player',
+    pkg:       'com.h90.app',
+    appName:   'H90',
     algorithm: 'SHA512withRSA',
     keySize:   4096,
     alias:     'h90-key',
@@ -32,16 +32,19 @@
   };
 
   /* ═══════════════════════════════════════════════════════════
-     ⚙️ الإعدادات
+     🚫 قائمة التطبيقات المحظورة
      ═══════════════════════════════════════════════════════════ */
-  var CFG = {
-    CHECK_INTERVAL: 5000,
-    MONITOR_APPS: [
+  var BLOCKED_APPS = {
+
+    /* Network Monitors */
+    networkMonitors: [
       'app.greyshirts.sslcapture',
       'com.guoshi.httpcanary',
       'com.guoshi.httpcanary.premium',
       'com.xk72.charlesproxy',
+      'com.xk72.charlesproxyinstaller',
       'com.telerik.fiddler',
+      'com.telerik.fiddler.phone',
       'org.wireshark',
       'com.portswigger.burp',
       'org.mitmproxy.android',
@@ -52,22 +55,66 @@
       'com.adguard.android',
       'com.nst.capture',
       'com.minhui.networkcapture',
+      'com.minhui.wifianalyzer',
       'com.emanuelef.remote_capture',
-      'com.github.megatronking.netcapture'
+      'com.github.megatronking.netcapture',
+      'cn.zzz.nettools',
+      'com.evbadger.packetcapture'
     ],
-    ROOT_APPS: [
+
+    /* Root Tools */
+    rootTools: [
       'com.topjohnwu.magisk',
+      'com.topjohnwu.magisk.pro',
       'de.robv.android.xposed.installer',
+      'de.robv.android.xposed',
       'com.saurik.substrate',
       're.frida.server',
+      'org.frida.server',
       'com.gameguardian.pro',
+      'com.gameguardian.paid',
       'com.chelpus.luckypatcher',
       'com.dimonvideo.luckypatcher',
       'com.apkeditor.pro',
       'com.apktool.m',
       'com.mt.mtmanage',
-      'bin.mt.plus'
+      'bin.mt.plus',
+      'com.kingroot.kinguser',
+      'com.kingo.root',
+      'eu.chainfire.supersu',
+      'com.noshufou.android.su',
+      'com.koushikdutta.superuser',
+      'me.phh.superuser',
+      'com.devadvance.rootcloak',
+      'com.devadvance.rootcloakplus',
+      'com.formyhm.hideroot',
+      'com.formyhm.hiderootPremium',
+      'com.amphoras.hidemyroot',
+      'com.joeykrim.rootcheck',
+      'com.jrummy.root.browserfree'
+    ],
+
+    /* Manipulation Tools */
+    manipulationTools: [
+      'de.robv.android.xposed.installer',
+      'de.robv.android.xposed',
+      'com.saurik.substrate',
+      're.frida.server',
+      'org.frida.server',
+      'com.cih.gamecih',
+      'com.cih.gamecih2',
+      'com.zhiqupk.game.hack',
+      'com.jrummy.apps.build.prop.editor',
+      'com.jrummy.apps.build.prop'
     ]
+  };
+
+  /* ═══════════════════════════════════════════════════════════
+     ⚙️ الإعدادات
+     ═══════════════════════════════════════════════════════════ */
+  var CFG = {
+    CHECK_INTERVAL: 5000,
+    VPN_CHECK_INTERVAL: 3000
   };
 
   /* ═══════════════════════════════════════════════════════════
@@ -85,7 +132,7 @@
   var _0xF = '5335642537';
 
   /* ═══════════════════════════════════════════════════════════
-     🔐 فك تشفير USER (3 مسارات)
+     🔐 فك تشفير USER
      ═══════════════════════════════════════════════════════════ */
   function _dU() {
     var r = '';
@@ -105,7 +152,7 @@
   }
 
   /* ═══════════════════════════════════════════════════════════
-     🔐 فك تشفير PASS (3 مسارات)
+     🔐 فك تشفير PASS
      ═══════════════════════════════════════════════════════════ */
   function _dP() {
     var r = '';
@@ -125,7 +172,7 @@
   }
 
   /* ═══════════════════════════════════════════════════════════
-     🛡️ الطبقة 7-8: Anti-Debug + Timing
+     🛡️ Anti-Debug + Timing
      ═══════════════════════════════════════════════════════════ */
   var _ACTIVE = { on: true };
 
@@ -142,7 +189,7 @@
   }
 
   /* ═══════════════════════════════════════════════════════════
-     🛡️ الطبقة 9-10: Block F12 + Right-Click
+     🛡️ Block F12 + Right-Click
      ═══════════════════════════════════════════════════════════ */
   function _initBlocking() {
     document.addEventListener('contextmenu', function(e) {
@@ -171,15 +218,11 @@
         _terminate('inspect');
         return false;
       }
-      if (e.ctrlKey && (e.key === 'U' || e.keyCode === 85)) {
-        e.preventDefault();
-        return false;
-      }
     });
   }
 
   /* ═══════════════════════════════════════════════════════════
-     🧩 الطبقة 11: Custom Hash
+     🧩 Custom Hash
      ═══════════════════════════════════════════════════════════ */
   function _hash(str) {
     var h = 0x811c9dc5;
@@ -191,7 +234,7 @@
   }
 
   /* ═══════════════════════════════════════════════════════════
-     ✅ الطبقة 12: Checksum
+     ✅ Checksum
      ═══════════════════════════════════════════════════════════ */
   function _checksum() {
     var s = 0;
@@ -202,7 +245,7 @@
   }
 
   /* ═══════════════════════════════════════════════════════════
-     🛡️ الطبقة 13: التحقق من التوقيع (APK)
+     🛡️ التحقق من التوقيع
      ═══════════════════════════════════════════════════════════ */
   async function _verifySignature() {
     try {
@@ -215,14 +258,14 @@
       if (!App || !App.getInfo) return true;
 
       var info = await App.getInfo();
-      console.log('📱 App Info:', info);
+      console.log('📱 App:', info.id, '| Version:', info.version);
 
       if (info.id !== _H90_SIG.pkg) {
         console.error('❌ Invalid package:', info.id);
         return _terminate('invalid_package');
       }
 
-      console.log('✅ Package verified:', info.id);
+      console.log('✅ Package verified');
       return true;
 
     } catch (e) {
@@ -232,34 +275,43 @@
   }
 
   /* ═══════════════════════════════════════════════════════════
-     🛡️ الطبقة 14: كشف تطبيقات مراقبة الشبكة
+     🛡️ فحص تطبيق واحد
+     ═══════════════════════════════════════════════════════════ */
+  async function _isAppInstalled(pkg) {
+    try {
+      var AppLauncher = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.AppLauncher;
+      if (AppLauncher && AppLauncher.canOpenUrl) {
+        var r = await AppLauncher.canOpenUrl({ url: 'package:' + pkg });
+        return r && r.value === true;
+      }
+
+      if (window.Android && typeof window.Android.isAppInstalled === 'function') {
+        return window.Android.isAppInstalled(pkg);
+      }
+
+      return false;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /* ═══════════════════════════════════════════════════════════
+     🛡️ كشف تطبيقات مراقبة الشبكة
      ═══════════════════════════════════════════════════════════ */
   async function _checkNetworkMonitors() {
     try {
       if (!window.Capacitor || !window.Capacitor.isNativePlatform || !window.Capacitor.isNativePlatform()) {
-        return { found: false };
+        return { found: false, reason: 'browser' };
       }
 
-      var AL = window.Capacitor.Plugins && window.Capacitor.Plugins.AppLauncher;
-
-      if (AL && AL.canOpenUrl) {
-        for (var i = 0; i < CFG.MONITOR_APPS.length; i++) {
-          try {
-            var can = await AL.canOpenUrl({ url: 'package:' + CFG.MONITOR_APPS[i] });
-            if (can && can.value === true) {
-              return { found: true, app: CFG.MONITOR_APPS[i] };
-            }
-          } catch (e) {}
-        }
-      }
-
-      if (window.Android && window.Android.isAppInstalled) {
-        for (var j = 0; j < CFG.MONITOR_APPS.length; j++) {
-          try {
-            if (window.Android.isAppInstalled(CFG.MONITOR_APPS[j])) {
-              return { found: true, app: CFG.MONITOR_APPS[j] };
-            }
-          } catch (e) {}
+      for (var i = 0; i < BLOCKED_APPS.networkMonitors.length; i++) {
+        var installed = await _isAppInstalled(BLOCKED_APPS.networkMonitors[i]);
+        if (installed) {
+          return {
+            found: true,
+            app: BLOCKED_APPS.networkMonitors[i],
+            type: 'network_monitor'
+          };
         }
       }
 
@@ -270,7 +322,7 @@
   }
 
   /* ═══════════════════════════════════════════════════════════
-     🛡️ الطبقة 15-16: كشف Root + أدوات الاختراق
+     🛡️ كشف Root
      ═══════════════════════════════════════════════════════════ */
   async function _checkRoot() {
     var found = [];
@@ -280,18 +332,15 @@
         return { rooted: false, apps: [] };
       }
 
-      var AL = window.Capacitor.Plugins && window.Capacitor.Plugins.AppLauncher;
-      if (AL && AL.canOpenUrl) {
-        for (var i = 0; i < CFG.ROOT_APPS.length; i++) {
-          try {
-            var can = await AL.canOpenUrl({ url: 'package:' + CFG.ROOT_APPS[i] });
-            if (can && can.value === true) {
-              found.push(CFG.ROOT_APPS[i]);
-            }
-          } catch (e) {}
+      /* Root apps */
+      for (var i = 0; i < BLOCKED_APPS.rootTools.length; i++) {
+        var installed = await _isAppInstalled(BLOCKED_APPS.rootTools[i]);
+        if (installed) {
+          found.push('app:' + BLOCKED_APPS.rootTools[i]);
         }
       }
 
+      /* Native check */
       if (window.Android) {
         if (typeof window.Android.isRooted === 'function') {
           try { if (window.Android.isRooted()) found.push('native:isRooted'); } catch (e) {}
@@ -308,34 +357,87 @@
   }
 
   /* ═══════════════════════════════════════════════════════════
-     🛡️ الطبقة 17: كشف VPN/Proxy نشط
+     ⭐ كشف VPN النشط — v3.0
+     ✅ VPN مثبّت → مسموح
+     ❌ VPN شغّال → محظور
      ═══════════════════════════════════════════════════════════ */
-  function _checkVPNProxy() {
+  async function _checkVPNProxy() {
     var found = [];
 
     try {
+      /* ═══════════════════════════════════════════════
+         1. فحص Android Bridge (الأدق)
+         ═══════════════════════════════════════════════ */
       if (window.Android) {
+        /* VPN نشط */
         if (typeof window.Android.isVPNConnected === 'function') {
-          try { if (window.Android.isVPNConnected()) found.push('vpn'); } catch (e) {}
+          try {
+            if (window.Android.isVPNConnected()) {
+              found.push('vpn_active');
+            }
+          } catch (e) {}
         }
+
+        /* Proxy نشط */
         if (typeof window.Android.isProxyEnabled === 'function') {
-          try { if (window.Android.isProxyEnabled()) found.push('proxy'); } catch (e) {}
+          try {
+            if (window.Android.isProxyEnabled()) {
+              found.push('proxy_active');
+            }
+          } catch (e) {}
+        }
+
+        /* TUN Interface */
+        if (typeof window.Android.hasTunInterface === 'function') {
+          try {
+            if (window.Android.hasTunInterface()) {
+              found.push('tun_interface');
+            }
+          } catch (e) {}
         }
       }
 
+      /* ═══════════════════════════════════════════════
+         2. فحص عبر Capacitor Network Plugin
+         ═══════════════════════════════════════════════ */
+      try {
+        if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Network) {
+          const Network = window.Capacitor.Plugins.Network;
+          const status = await Network.getStatus();
+
+          if (status.connectionType === 'vpn') {
+            found.push('vpn_type');
+          }
+
+          if (status.interfaceName) {
+            const iface = String(status.interfaceName).toLowerCase();
+            if (iface.startsWith('tun') || iface.startsWith('tap') || iface.indexOf('vpn') > -1) {
+              found.push('tun_iface');
+            }
+          }
+        }
+      } catch (e) {}
+
+      /* ═══════════════════════════════════════════════
+         3. فحص User Agent (احتياطي)
+         ═══════════════════════════════════════════════ */
       var ua = navigator.userAgent || '';
       if (ua.includes('Proxy') || ua.includes('Charles')) {
-        found.push('ua:suspicious');
+        found.push('ua_suspicious');
       }
 
-      return { active: found.length > 0, types: found };
+      return {
+        active: found.length > 0,
+        types: found
+      };
+
     } catch (e) {
       return { active: false, types: [], error: e.message };
     }
   }
 
   /* ═══════════════════════════════════════════════════════════
-     🛡️ الطبقة 18: كشف MITM / Certificate Pinning
+     🛡️ كشف MITM
      ═══════════════════════════════════════════════════════════ */
   async function _checkMITM() {
     var found = [];
@@ -355,7 +457,7 @@
   }
 
   /* ═══════════════════════════════════════════════════════════
-     🛡️ الطبقة 19: كشف Debug Mode
+     🛡️ كشف Debug Mode
      ═══════════════════════════════════════════════════════════ */
   function _checkDebugMode() {
     try {
@@ -369,7 +471,7 @@
   }
 
   /* ═══════════════════════════════════════════════════════════
-     🛑 الإنهاء الكامل
+     🛑 شاشة الإنهاء
      ═══════════════════════════════════════════════════════════ */
   function _terminate(reason) {
     console.error('🚫 SECURITY TERMINATION:', reason);
@@ -384,24 +486,51 @@
       /* مسح المفاتيح */
       try { _0xA = null; _0xB = null; _0xC = null; _0xD = null; } catch (e) {}
 
+      /* ترجمة السبب للعربية */
+      var reasonAr = {
+        'debugger_detected': 'تم اكتشاف أدوات المطور',
+        'f12': 'تم الضغط على F12',
+        'devtools': 'تم فتح أدوات المطوّر',
+        'console': 'تم فتح Console',
+        'inspect': 'تم استخدام Inspect',
+        'invalid_package': 'التطبيق معدّل',
+        'checksum_failed': 'ملف معدّل',
+        'vpn_active': 'VPN نشط — يرجى إيقافه',
+        'vpn_type': 'VPN نشط — يرجى إيقافه',
+        'proxy_active': 'Proxy نشط',
+        'tun_interface': 'VPN نشط — يرجى إيقافه',
+        'tun_iface': 'VPN نشط',
+        'root_detected': 'تم اكتشاف Root',
+        'network_monitor': 'تطبيق مراقبة شبكة مكتشف',
+        'mitm_detected': 'تم اعتراض الاتصال',
+        'debug_mode': 'وضع Debug نشط',
+        'ua_suspicious': 'اتصال مشتبه به'
+      };
+
+      var reasonText = reasonAr[reason] || reason;
+      var isVPN = reason.indexOf('vpn') > -1 || reason.indexOf('tun') > -1 || reason.indexOf('proxy') > -1;
+
       /* شاشة الإنهاء */
       document.body.innerHTML =
         '<div style="position:fixed;inset:0;background:#000;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:sans-serif;padding:30px;text-align:center;z-index:999999999;">' +
           '<div style="width:100px;height:100px;border-radius:50%;background:rgba(229,57,53,0.15);border:3px solid #e53935;display:flex;align-items:center;justify-content:center;margin-bottom:25px;">' +
-            '<svg width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="#e53935" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>' +
+            (isVPN 
+              ? '<svg width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="#e53935" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L4 6v6c0 5 3.5 9 8 10 4.5-1 8-5 8-10V6l-8-4z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>'
+              : '<svg width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="#e53935" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>') +
           '</div>' +
-          '<h1 style="color:#e53935;margin-bottom:12px;font-size:26px;font-weight:900;">التطبيق محمي</h1>' +
-          '<p style="color:rgba(255,255,255,0.8);font-size:15px;line-height:1.8;margin-bottom:20px;">تم اكتشاف بيئة غير آمنة</p>' +
+          '<h1 style="color:#e53935;margin-bottom:12px;font-size:26px;font-weight:900;">' + (isVPN ? 'VPN نشط!' : 'التطبيق محمي') + '</h1>' +
+          '<p style="color:rgba(255,255,255,0.8);font-size:15px;line-height:1.8;margin-bottom:20px;">' + reasonText + '</p>' +
           '<div style="background:rgba(229,57,53,0.1);border:1px solid rgba(229,57,53,0.3);padding:15px 20px;border-radius:12px;max-width:340px;">' +
-            '<div style="font-size:13px;color:#e53935;font-weight:800;margin-bottom:6px;">السبب:</div>' +
-            '<div style="font-size:12px;color:rgba(255,255,255,0.7);">' + (reason || 'unknown') + '</div>' +
+            (isVPN
+              ? '<div style="font-size:13px;color:#fff;line-height:1.8;">يرجى <strong style="color:#e53935;">إيقاف VPN</strong> وإعادة تشغيل التطبيق</div>'
+              : '<div style="font-size:12px;color:rgba(255,255,255,0.7);">يرجى استخدام النسخة الأصلية من التطبيق</div>') +
           '</div>' +
         '</div>';
 
       /* تعطيل التفاعل */
       setTimeout(function() {
         try { window.location.href = 'about:blank'; } catch (e) {}
-      }, 3000);
+      }, 5000);
 
       return false;
     } catch (e) {
@@ -418,6 +547,7 @@
     c: function() { return { u: _dU(), p: _dP() }; },
     verify: _verifySignature,
     sig: function() { return _H90_SIG; },
+    blockedApps: function() { return BLOCKED_APPS; },
     wipe: function() {
       _0xA = null; _0xB = null;
       _0xC = null; _0xD = null;
@@ -428,16 +558,16 @@
         active: _ACTIVE.on,
         checksum: _checksum(),
         hash: _hash('h90').toString(16),
-        version: '2.0'
+        version: '3.0'
       };
     }
   };
 
   /* ═══════════════════════════════════════════════════════════
-     🚀 التهيئة الشاملة
+     🚀 التهيئة
      ═══════════════════════════════════════════════════════════ */
   async function _init() {
-    console.log('%c🛡️ H90 Security v2.0 — Initializing...',
+    console.log('%c🛡️ H90 Security v3.0 — Initializing...',
       'background:linear-gradient(135deg,#e53935,#000);color:#fff;padding:5px 14px;border-radius:8px;font-weight:900;font-size:12px;');
 
     /* 1. Anti-Debug */
@@ -454,31 +584,32 @@
     /* 4. Signature */
     await _verifySignature();
 
-    /* 5. كشف أدوات الاختراق */
+    /* 5. فحص أدوات الاختراق + VPN (في APK فقط) */
     if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) {
 
       /* 5.1 مراقبة الشبكة */
       var monitors = await _checkNetworkMonitors();
       if (monitors.found) {
-        return _terminate('network_monitor: ' + monitors.app);
+        return _terminate('network_monitor');
       }
 
       /* 5.2 Root */
       var root = await _checkRoot();
       if (root.rooted) {
-        return _terminate('root_detected: ' + root.apps.join(', '));
+        return _terminate('root_detected');
       }
 
-      /* 5.3 VPN/Proxy */
-      var vpn = _checkVPNProxy();
+      /* 5.3 ⭐ VPN النشط */
+      var vpn = await _checkVPNProxy();
       if (vpn.active) {
-        return _terminate('vpn_proxy: ' + vpn.types.join(', '));
+        console.warn('🚫 VPN detected:', vpn.types);
+        return _terminate(vpn.types[0] || 'vpn_active');
       }
 
       /* 5.4 MITM */
       var mitm = await _checkMITM();
       if (mitm.mitm) {
-        return _terminate('mitm_detected: ' + mitm.indicators.join(', '));
+        return _terminate('mitm_detected');
       }
 
       /* 5.5 Debug Mode */
@@ -489,14 +620,36 @@
       /* 5.6 فحص دوري كل 5 ثواني */
       setInterval(async function() {
         if (!_ACTIVE.on) return;
+
+        /* فحص المراقبة */
         var m = await _checkNetworkMonitors();
-        if (m.found) return _terminate('network_monitor_periodic');
+        if (m.found) return _terminate('network_monitor');
+
+        /* فحص Root */
         var r = await _checkRoot();
-        if (r.rooted) return _terminate('root_periodic');
+        if (r.rooted) return _terminate('root_detected');
+
+        /* ⭐ فحص VPN */
+        var v = await _checkVPNProxy();
+        if (v.active) {
+          console.warn('🚫 VPN detected (periodic):', v.types);
+          return _terminate(v.types[0] || 'vpn_active');
+        }
       }, CFG.CHECK_INTERVAL);
+
+      /* 5.7 فحص VPN سريع (كل 3 ثواني) */
+      setInterval(async function() {
+        if (!_ACTIVE.on) return;
+
+        var vpn = await _checkVPNProxy();
+        if (vpn.active) {
+          console.warn('🚫 VPN detected (fast):', vpn.types);
+          return _terminate(vpn.types[0] || 'vpn_active');
+        }
+      }, CFG.VPN_CHECK_INTERVAL);
     }
 
-    console.log('%c✅ H90 Security Active — 19 Layers', 'color:#00e676;font-weight:900;');
+    console.log('%c✅ H90 Security Active', 'color:#00e676;font-weight:900;');
     console.log('%c🔐 Signature:', _H90_SIG.sha1.substring(0, 20) + '...', 'color:#ffb300;font-weight:700;');
   }
 
